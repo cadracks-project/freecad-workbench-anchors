@@ -13,7 +13,7 @@ class AnchorWorkbench(Gui.Workbench):
     ToolTip = "Anchors based assembly"
     user_app_data = App.getUserAppDataDir()
     # Msg("User app data dir : %s\n" % user_app_data)
-    Icon = user_app_data + "Mod/FreeCAD-Anchors/resources/default_icon.svg"
+    Icon = user_app_data + "Mod/freecad-workbench-anchors/resources/default_icon.svg"
 
     def GetClassName(self):
         return "Gui::PythonWorkbench"
