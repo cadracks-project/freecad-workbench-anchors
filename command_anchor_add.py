@@ -5,8 +5,12 @@ r"""Anchor Add Command"""
 from os.path import join, dirname
 
 import FreeCAD as App
+import FreeCADGui as Gui
 
-from freecad_logging import info
+import Part
+
+
+from freecad_logging import info, debug, error
 
 
 class CommandAnchorAdd:
@@ -21,6 +25,35 @@ class CommandAnchorAdd:
     def Activated(self):
         r""""""
         info("This command will, in the future, add an anchor to a Part")
+        # selection = Gui.Selection.getSelection()
+        selection_ex = Gui.Selection.getSelectionEx()
+        # debug("  Selection : %s" % str(selection))
+        # debug("Selection Ex: %s" % str(selection_ex))
+
+        if len(selection_ex) != 1:
+            msg = "Anchors : " \
+                  "Select feature(s) on only 1 solid to add anchors to"
+            error(msg)
+            return
+        else:
+            # https://forum.freecadweb.org/viewtopic.php?t=7249
+            unique_selection = selection_ex[0]
+            selected_object = unique_selection.Object
+            debug("  Selection : %s || %s" % (selected_object,
+                                              selected_object.Shape.ShapeType))
+            subselected_objects = unique_selection.SubObjects
+
+            for subselected_object in subselected_objects:
+                debug("SubSelection : %s || %s" % (subselected_object,
+                                                   type(subselected_object)))
+                if isinstance(subselected_object, Part.Face):
+                    debug("It is a Face")
+                elif isinstance(subselected_object, Part.Edge):
+                    debug("It is an Edge")
+                elif isinstance(subselected_object, Part.Vertex):
+                    debug("It is a Vertex")
+                else:
+                    debug("What is that?")
 
     def GetResources(self):
         icon = join(dirname(__file__), "resources", "default_icon.svg")
