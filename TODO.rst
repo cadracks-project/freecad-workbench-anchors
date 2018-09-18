@@ -1,4 +1,5 @@
-Icons
+**** Icons
+**** ANchorableObject feature / container for FC Object + anchors
 Understand how to add an anchor to a Part
   Select the part or a feature of the part
   Retrieve part/feature data

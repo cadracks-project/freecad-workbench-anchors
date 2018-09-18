@@ -11,6 +11,7 @@ import Part
 
 
 from freecad_logging import info, debug, error
+from anchor import Anchor, ViewProviderAnchor
 
 
 class CommandAnchorAdd:
@@ -25,6 +26,7 @@ class CommandAnchorAdd:
     def Activated(self):
         r""""""
         info("This command will, in the future, add an anchor to a Part")
+
         # selection = Gui.Selection.getSelection()
         selection_ex = Gui.Selection.getSelectionEx()
         # debug("  Selection : %s" % str(selection))
@@ -55,8 +57,14 @@ class CommandAnchorAdd:
                 else:
                     debug("What is that?")
 
+        a = App.ActiveDocument.addObject("App::FeaturePython", "Anchor")
+        Anchor(a)
+        ViewProviderAnchor(a.ViewObject)
+
     def GetResources(self):
-        icon = join(dirname(__file__), "resources", "default_icon.svg")
+        icon = join(dirname(__file__),
+                    "resources",
+                    "freecad_workbench_anchors_add_anchor.svg")
         return {"MenuText": "Add anchor",
                 "Accel": "Alt+C",
                 "ToolTip": "Add an anchor to a part",

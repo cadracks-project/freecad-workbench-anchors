@@ -4,16 +4,12 @@ r"""InitGui.py is loaded when FreeCAD runs in GUI mode"""
 
 
 class AnchorWorkbench(Gui.Workbench):
-    """
-    class which gets initiated at startup of the gui
-    """
-
-    # The workbench name as it appears in the workbenches list
+    """Class that gets initiated at startup of the gui"""
     MenuText = "Anchors"
     ToolTip = "Anchors based assembly"
     user_app_data = App.getUserAppDataDir()
-    # Msg("User app data dir : %s\n" % user_app_data)
-    Icon = user_app_data + "Mod/freecad-workbench-anchors/resources/default_icon.svg"
+    Icon = user_app_data + \
+           "Mod/freecad-workbench-anchors/resources/freecad_workbench_anchors.svg"
 
     def GetClassName(self):
         return "Gui::PythonWorkbench"
@@ -24,20 +20,26 @@ class AnchorWorkbench(Gui.Workbench):
         """
         Msg("Anchor workbench initialize\n")
 
+        from command_anchorable_object_add import CommandAnchorableObjectAdd
         from command_anchor_add import CommandAnchorAdd
         from command_assembly_add import CommandAssemblyAdd
 
-        commands = {"AnchorAdd": CommandAnchorAdd(),
-                    "AssemblyAdd": CommandAssemblyAdd()}
+        command_names = ["AnchorableObjectAdd",
+                         "AnchorAdd",
+                         "AssemblyAdd"]
 
-        for k, v in commands.items():
-            FreeCADGui.addCommand(k, v)
+        commands = [CommandAnchorableObjectAdd(),
+                    CommandAnchorAdd(),
+                    CommandAssemblyAdd()]
+
+        for name, command in zip(command_names, commands):
+            FreeCADGui.addCommand(name, command)
 
         # creates a new toolbar with your commands
-        self.appendToolbar("Anchors commands toolbar", commands.keys())
+        self.appendToolbar("Anchors commands toolbar", command_names)
 
         # creates a new menu
-        self.appendMenu("Anchors", commands.keys())
+        self.appendMenu("Anchors", command_names)
 
         # appends a submenu to an existing menu
         # not useful in the Anchors Workbench context

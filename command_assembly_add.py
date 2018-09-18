@@ -24,7 +24,9 @@ class CommandAssemblyAdd:
         info("This command will, in the future, add an assembly to a Document")
 
     def GetResources(self):
-        icon = join(dirname(__file__), "resources", "default_icon.svg")
+        icon = join(dirname(__file__),
+                    "resources",
+                    "freecad_workbench_anchors_add_assembly.svg")
         return {"MenuText": "Add assembly",
                 "Accel": "Alt+A",
                 "ToolTip": "Add an assembly to the document",
