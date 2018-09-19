@@ -11,20 +11,35 @@ import FreeCAD as App
 from pivy import coin
 
 
+def make_anchor_feature(p, u, v):
+    r"""makes an anchorable object feature
+
+    Returns
+    -------
+    the new object.
+
+    """
+    obj = App.ActiveDocument.addObject("Part::FeaturePython",
+                                       "Anchor")
+    Anchor(obj, p, u, v)
+    ViewProviderAnchor(obj.ViewObject)
+    return obj
+
+
 class Anchor:
-    def __init__(self, obj):
+    def __init__(self, obj, p, u, v):
         obj.addProperty("App::PropertyVector",
                         "p",
                         "Definition",
-                        "Anchor's origin").p = App.Vector(0, 0, 0)
+                        "Anchor's origin").p = App.Vector(p[0], p[1], p[2])
         obj.addProperty("App::PropertyVector",
                         "u",
                         "Definition",
-                        "Anchor's u vector").u = App.Vector(1, 0, 0)
+                        "Anchor's u vector").u = App.Vector(u[0], u[1], u[2])
         obj.addProperty("App::PropertyVector",
                         "v",
                         "Definition",
-                        "Anchor's v vector").v = App.Vector(0, 1, 0)
+                        "Anchor's v vector").v = App.Vector(v[0], v[1], v[2])
         obj.Proxy = self
 
     def onChanged(self, fp, prop):
