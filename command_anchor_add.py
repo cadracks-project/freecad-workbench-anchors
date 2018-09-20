@@ -8,7 +8,7 @@ import FreeCAD as App
 import Part
 
 from freecad_logging import info, debug, error
-from anchor import Anchor, ViewProviderAnchor, make_anchor_feature
+from anchor import Anchor, ViewProviderAnchor
 from vectors import perpendicular
 
 if App.GuiUp:
@@ -33,6 +33,8 @@ class CommandAnchorAdd:
 
         # selection = Gui.Selection.getSelection()
         selection_ex = Gui.Selection.getSelectionEx()
+
+        debug("len selection_ex = %i" % len(selection_ex))
 
         if len(selection_ex) != 1:
             msg = "Anchors : " \
@@ -66,8 +68,6 @@ class CommandAnchorAdd:
 
                     v = perpendicular(u, normalize_=True, randomize_=False)
 
-                    make_anchor_feature(p, u, v)
-
                 elif isinstance(subselected_object, Part.Wire):
                     debug("It is a Wire")
                 elif isinstance(subselected_object, Part.Edge):
@@ -88,9 +88,11 @@ class CommandAnchorAdd:
                 else:
                     debug("What is that?")
 
-        # a = App.ActiveDocument.addObject("App::FeaturePython", "Anchor")
-        # Anchor(a)
-        # ViewProviderAnchor(a.ViewObject)
+        # make_anchor_feature(p, u, v)
+
+        a = App.ActiveDocument.addObject("App::FeaturePython", "Anchor")
+        Anchor(a, p, u, v)
+        ViewProviderAnchor(a.ViewObject)
 
     def GetResources(self):
         icon = join(dirname(__file__),

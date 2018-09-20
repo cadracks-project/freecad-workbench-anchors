@@ -1,13 +1,28 @@
 **** Icons
-**** ANchorableObject feature / container for FC Object + anchors
-Understand how to add an anchor to a Part
-  Select the part or a feature of the part
-  Retrieve part/feature data
+**** AnchorableObject feature / container for FC Object + anchors
+**Understand how to add an anchor to a Part
+  **Select the part or a feature of the part
+  **Retrieve part/feature data
   Propose options
   Dialog to finalize the anchor
 How will the anchor be serialized ?
-Anchor view provider
+******** Anchor view provider
 
 Assemble with anchors in FreeCAD -> How?
 
-HOW TO RUN TESTS?
+Next
+----
+
+-> Anchors as children of an anchorable part
+
+THE ANCHORS SHOULD MOVE WITH THE PARTS
+
+Other features : edges, vertices
+
+Export to osvcad format
+
+
+Later
+-----
+
+Select 2 anchors and assemble parts

@@ -6,24 +6,71 @@ Is made of a point and 2 unit and orthogonal vectors
 
 """
 
+from __future__ import division
+
+import math
+from os.path import join, dirname
+
+import numpy as np
+
+from freecad_logging import info, debug, error
 import FreeCAD as App
 
 from pivy import coin
 
+from transformations import superimposition_matrix, translation_from_matrix, \
+    rotation_from_matrix
 
-def make_anchor_feature(p, u, v):
-    r"""makes an anchorable object feature
+
+# def make_anchor_feature(p, u, v):
+#     r"""makes an anchorable object feature
+#
+#     Returns
+#     -------
+#     the new object.
+#
+#     """
+#     obj = App.ActiveDocument.addObject("Part::FeaturePython",
+#                                        "Anchor")
+#     Anchor(obj, p, u, v)
+#     ViewProviderAnchor(obj.ViewObject)
+#     return obj
+
+def anchor_transformation(p0, u0, v0, p1, u1, v1):
+    r"""Find the 4x4 transformation matrix
+    that superimposes anchor 0 on anchor 1
+
+    Parameters
+    ----------
+    anchor_0 : Anchor
+    anchor_1 : Anchor
 
     Returns
     -------
-    the new object.
+    4x4 matrix
 
     """
-    obj = App.ActiveDocument.addObject("Part::FeaturePython",
-                                       "Anchor")
-    Anchor(obj, p, u, v)
-    ViewProviderAnchor(obj.ViewObject)
-    return obj
+    p0x, p0y, p0z = p0
+    u0x, u0y, u0z = u0
+    v0x, v0y, v0z = v0
+
+    p1x, p1y, p1z = p1
+    u1x, u1y, u1z = u1
+    v1x, v1y, v1z = v1
+
+    # compute points to transform
+    a0 = np.array(
+        [np.array([p0x, p0y, p0z]),
+         np.array([p0x + u0x, p0y + u0y, p0z + u0z]),
+         np.array([p0x + v0x, p0y + v0y, p0z + v0z])])
+    # v1 = np.array(
+    #     [anchor_1.p, anchor_1.p - anchor_1.u, anchor_1.p + anchor_1.v])
+    a1 = np.array(
+        [np.array([p1x, p1y, p1z]),
+         np.array([p1x - u1x, p1y - u1y, p1z - u1z]),
+         np.array([p1x + v1x, p1y + v1y, p1z + v1z])])
+
+    return superimposition_matrix(a0.T, a1.T, scale=False, usesvd=False)
 
 
 class Anchor:
@@ -52,62 +99,201 @@ class Anchor:
 
 
 class ViewProviderAnchor:
-    def __init__(self, obj):
+    def __init__(self, vobj):
         r"""Set this object to the proxy object of the actual view provider"""
-        obj.addProperty("App::PropertyColor",
-                        "Color",
-                        "Anchor",
-                        "Color of the anchor").Color = (0.0, 0.0, 1.0)
-        obj.Proxy = self
+        vobj.addProperty("App::PropertyColor",
+                         "ColorU",
+                         "Anchor",
+                         "Color of the u vector").ColorU = (1.0, 0.0, 0.0)
+        vobj.addProperty("App::PropertyColor",
+                         "ColorV",
+                         "Anchor",
+                         "Color of the v vector").ColorV = (0.5, 0.5, 0.5)
 
-    def attach(self, obj):
+        vobj.Proxy = self
+
+    def attach(self, vobj):
         r"""Setup the scene sub-graph of the view provider,
         this method is mandatory
-        """
-        self.shaded = coin.SoGroup()
-        self.wireframe = coin.SoGroup()
+        
+        See Also
+        --------
+        https://www.freecadweb.org/wiki/Scripted_objects
 
+        """
+        debug("AnchorViewProvider/attach")
+
+        self.shaded = coin.SoSeparator()
+        self.wireframe = coin.SoSeparator()
+
+        # group u cone and cylinder
+        self.group_u = coin.SoSeparator()
+        self.color_u = coin.SoBaseColor()
+
+        self.group_cyl_u = coin.SoSeparator()
+        self.transform_cyl_u = coin.SoTransform()
+
+        self.group_cone_u = coin.SoSeparator()
+        self.transform_cone_u = coin.SoTransform()
+
+        # group v cone and cylinder
+        self.group_v = coin.SoSeparator()
+        self.transform_v = coin.SoTransform()
+        self.color_v = coin.SoBaseColor()
+
+        self.group_cyl_v = coin.SoSeparator()
+        self.transform_cyl_v = coin.SoTransform()
+
+        self.group_cone_v = coin.SoSeparator()
+        self.transform_cone_v = coin.SoTransform()
+
+        # global
         self.scale = coin.SoScale()
-        self.color = coin.SoBaseColor()
+        self.scale.scaleFactor.setValue(1., 1., 1.)
         self.transform = coin.SoTransform()
 
-        self.transform.translation.setValue((0, 5, 0))
-        self.transform.center.setValue((0, 0, 0))
-        import math
-        self.transform.rotation.setValue(coin.SbVec3f((1, 0, 0)), math.pi/2)
+        # arrow dimensions
+        self.arrow_length = 1
+        cone_cyl_ratio = 0.2
+        cyl_radius_ratio = 0.05
+        cone_base_radius_ratio = 0.1
 
-        # data = coin.SoCube()
-        cone = coin.SoCone()
-        cone.height.setValue(1)
+        # The cylinder is created from its middle at the origin
+        # -> compensation
+        self.transform_cyl_u.translation.setValue(
+            (0.,
+             self.arrow_length * (1 - cone_cyl_ratio) / 2,
+             0.))
+        self.transform_cone_u.translation.setValue(
+            (0.,
+             self.arrow_length * (1 - cone_cyl_ratio) + self.arrow_length * cone_cyl_ratio / 2,
+             0.))
 
+        self.transform_cyl_v.translation.setValue(
+            (0.,
+             self.arrow_length * (1 - cone_cyl_ratio) / 2,
+             0.))
+        self.transform_cone_v.translation.setValue(
+            (0.,
+             self.arrow_length * (1 - cone_cyl_ratio) + self.arrow_length * cone_cyl_ratio / 2,
+             0.))
+
+        # put v at 90 degrees
+        self.transform_v.center.setValue((0, 0, 0))
+        self.transform_v.rotation.setValue(coin.SbVec3f((1, 0, 0)), math.pi/2)
+
+        # Cone and cylinder creation from dimensions
+        cone_u = coin.SoCone()
+        cone_u.height.setValue(self.arrow_length * cone_cyl_ratio)
+        cone_u.bottomRadius.setValue(self.arrow_length * cone_base_radius_ratio)
+
+        cylinder_u = coin.SoCylinder()
+        cylinder_u.radius.setValue(self.arrow_length * cyl_radius_ratio)
+        cylinder_u.height.setValue(self.arrow_length * (1 - cone_cyl_ratio))
+
+        cone_v = coin.SoCone()
+        cone_v.height.setValue(self.arrow_length * cone_cyl_ratio)
+        cone_v.bottomRadius.setValue(self.arrow_length * cone_base_radius_ratio)
+
+        cylinder_v = coin.SoCylinder()
+        cylinder_v.radius.setValue(self.arrow_length * cyl_radius_ratio)
+        cylinder_v.height.setValue(self.arrow_length * (1 - cone_cyl_ratio))
+
+        # group_cyl_u
+        self.group_cyl_u.addChild(self.transform_cyl_u)
+        self.group_cyl_u.addChild(cylinder_u)
+
+        # group_cone_u
+        self.group_cone_u.addChild(self.transform_cone_u)
+        self.group_cone_u.addChild(cone_u)
+
+        # group_u
+        self.group_u.addChild(self.color_u)
+        self.group_u.addChild(self.group_cyl_u)
+        self.group_u.addChild(self.group_cone_u)
+
+        # group_cyl_v
+        self.group_cyl_v.addChild(self.transform_cyl_v)
+        self.group_cyl_v.addChild(cylinder_v)
+
+        # group_cone_v
+        self.group_cone_v.addChild(self.transform_cone_v)
+        self.group_cone_v.addChild(cone_v)
+
+        # group_v
+        self.group_v.addChild(self.transform_v)
+        self.group_v.addChild(self.color_v)
+        self.group_v.addChild(self.group_cyl_v)
+        self.group_v.addChild(self.group_cone_v)
+
+        # ** shaded **
         self.shaded.addChild(self.transform)
         self.shaded.addChild(self.scale)
-        self.shaded.addChild(self.color)
-        self.shaded.addChild(cone)
-        obj.addDisplayMode(self.shaded, "Shaded")
+        self.shaded.addChild(self.group_u)
+        self.shaded.addChild(self.group_v)
+        vobj.addDisplayMode(self.shaded, "Shaded")
 
+        # ** wireframe **
         style = coin.SoDrawStyle()
         style.style = coin.SoDrawStyle.LINES
         self.wireframe.addChild(style)
         self.wireframe.addChild(self.transform)
         self.wireframe.addChild(self.scale)
-        self.wireframe.addChild(self.color)
-        self.wireframe.addChild(cone)
-        obj.addDisplayMode(self.wireframe, "Wireframe")
+        self.wireframe.addChild(self.group_u)
+        self.wireframe.addChild(self.group_v)
+        vobj.addDisplayMode(self.wireframe, "Wireframe")
 
-        self.onChanged(obj, "Color")
+        self.onChanged(vobj, "ColorU")
+        self.onChanged(vobj, "ColorV")
 
-    def updateData(self, fp, prop):
+    def updateData(self, feature, prop):
         r"""If a property of the handled feature has changed,
         we have the chance to handle this here
+        
+        See Also
+        --------
+        https://www.freecadweb.org/wiki/Scripted_objects
+
         """
-        # fp is the handled feature,
+        debug("ViewProviderAnchor/updateData")
+        p = feature.getPropertyByName("p")
+        u = feature.getPropertyByName("u")
+        v = feature.getPropertyByName("v")
+
+        self.transform.translation.setValue((p[0], p[1], p[2]))
+
+        at = anchor_transformation(p0=(0, 0, 0),
+                                   u0=(0, -1, 0),
+                                   v0=(0, 0, 1),
+                                   p1=(p[0], p[1], p[2]),
+                                   u1=(u[0], u[1], u[2]),
+                                   v1=(v[0], v[1], v[2]))
+
+        t = translation_from_matrix(at)
+
+        self.transform.translation.setValue((t[0], t[1], t[2]))
+
+        angle, direction, point = rotation_from_matrix(at)
+        print("angle : %f" % angle)
+        print("direction : %s" % str(direction))
+        print("point : %s" % str(point))
+
+        self.transform.rotation.setValue(coin.SbVec3f(direction), angle)
+
+        # mat = coin.SoSFMatrix()
+        # mat.setValue(at[0][0], at[0][1], at[0][2], at[0][3],
+        #              at[1][0], at[1][1], at[1][2], at[1][3],
+        #              at[2][0], at[2][1], at[2][2], at[2][3],
+        #              at[3][0], at[3][1], at[3][2], at[3][3])
+        #
+        # self.transform = mat
+
+        # feature is the handled feature,
         # prop is the name of the property that has changed
-        # l = fp.getPropertyByName("Length")
-        # w = fp.getPropertyByName("Width")
-        # h = fp.getPropertyByName("Height")
+        # l = feature.getPropertyByName("Length")
+        # w = feature.getPropertyByName("Width")
+        # h = feature.getPropertyByName("Height")
         # self.scale.scaleFactor.setValue(float(l), float(w), float(h))
-        pass
 
     def getDisplayModes(self, obj):
         r"""Return a list of display modes"""
@@ -130,41 +316,20 @@ class ViewProviderAnchor:
     def onChanged(self, vp, prop):
         r"""Here we can do something when a single property got changed"""
         App.Console.PrintMessage("Change property: " + str(prop) + "\n")
-        if prop == "Color":
-            c = vp.getPropertyByName("Color")
-            self.color.rgb.setValue(c[0], c[1], c[2])
+        if prop == "ColorU":
+            cu = vp.getPropertyByName("ColorU")
+            self.color_u.rgb.setValue(cu[0], cu[1], cu[2])
+        if prop == "ColorV":
+            cv = vp.getPropertyByName("ColorV")
+            self.color_v.rgb.setValue(cv[0], cv[1], cv[2])
 
     def getIcon(self):
         r"""Return the icon in XPM format which will appear in the tree view.
         This method is\ optional and if not defined a default icon is shown.
         """
-        return """
-            /* XPM */
-            static const char * ViewProviderBoat_xpm[] = {
-            "16 16 6 1",
-            "   c None",
-            ".  c #141010",
-            "+  c #615BD2",
-            "@  c #C39D55",
-            "#  c #000000",
-            "$  c #57C355",
-            "        ........",
-            "   ......++..+..",
-            "   .@@@@.++..++.",
-            "   .@@@@.++..++.",
-            "   .@@  .++++++.",
-            "  ..@@  .++..++.",
-            "###@@@@ .++..++.",
-            "##$.@@$#.++++++.",
-            "#$#$.$$$........",
-            "#$$#######      ",
-            "#$$#$$$$$#      ",
-            "#$$#$$$$$#      ",
-            "#$$#$$$$$#      ",
-            " #$#$$$$$#      ",
-            "  ##$$$$$#      ",
-            "   #######      "};
-            """
+        return join(dirname(__file__),
+                    "resources",
+                    "freecad_workbench_anchors_anchor.svg")
 
     def __getstate__(self):
         r"""When saving the document this object gets stored using
