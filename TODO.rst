@@ -13,7 +13,9 @@ Assemble with anchors in FreeCAD -> How?
 Next
 ----
 
--> Anchors as children of an anchorable part
+******** Anchors as children of an anchorable part
+
+BUG : adding an anchor on a curved face fails in vectors.py", line 41, in perpendicular
 
 THE ANCHORS SHOULD MOVE WITH THE PARTS
 

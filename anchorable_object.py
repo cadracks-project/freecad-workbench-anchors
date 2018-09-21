@@ -22,6 +22,15 @@ def make_anchorable_object_feature():
     """
     obj = App.ActiveDocument.addObject("Part::FeaturePython",
                                        "AnchorableObject")
+
+    # no document object found of type Part::DocumentObjectGroupPython
+    # obj = App.ActiveDocument.addObject("Part::DocumentObjectGroupPython",
+    #                                    "AnchorableObject")
+
+    # type App::Part cannot dynamically add properties
+    # obj = App.ActiveDocument.addObject("App::Part",
+    #                                    "AnchorableObject")
+
     AnchorableObject(obj)
     ViewProviderAnchorableObject(obj.ViewObject)
     return obj
@@ -29,10 +38,17 @@ def make_anchorable_object_feature():
 
 class AnchorableObject:
     def __init__(self, obj):
+        # obj.addExtension('App::OriginGroupExtensionPython', self)
         obj.addProperty("App::PropertyLink",
                         "Base",
                         "AnchorableObject",
                         "Input")
+
+        obj.addProperty("App::PropertyLinkList",
+                        "Anchors",
+                        "AnchorableObject",
+                        "A link list")
+
         obj.Proxy = self
 
     def onChanged(self, feature, prop):
@@ -44,14 +60,16 @@ class AnchorableObject:
 
     def execute(self, feature):
         r"""Do something when doing a recomputation, this method is mandatory"""
-        App.Console.PrintMessage("Recompute Anchor feature\n")
+        App.Console.PrintMessage("Recompute AnchorableObject feature\n")
         feature.Shape = feature.Base.Shape
-        feature.Label = "Anchorable" + feature.Base.Label
+        # feature.Label = "Anchorable" + feature.Base.Label
 
 
 class ViewProviderAnchorableObject:
     def __init__(self, vobj):
         r"""Set this object to the proxy object of the actual view provider"""
+        # vobj.addExtension("Gui::ViewProviderGeoFeatureGroupExtensionPython",
+        #                   self)
         vobj.Proxy = self
 
     def attach(self, vobj):
@@ -72,7 +90,10 @@ class ViewProviderAnchorableObject:
 
     def claimChildren(self):
         r"""Parametric dependencies display?"""
-        return [self.Object.Base]
+        children = [self.Object.Base]
+        for anchor in self.Object.Anchors:
+            children.append(anchor)
+        return children
 
     def onDelete(self, feature, subelements):
         try:

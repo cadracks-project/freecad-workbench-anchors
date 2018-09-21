@@ -7,7 +7,7 @@ from os.path import join, dirname
 import FreeCAD as App
 import Part
 
-from freecad_logging import info, debug, error
+from freecad_logging import debug, error
 from anchor import Anchor, ViewProviderAnchor
 from vectors import perpendicular
 
@@ -28,7 +28,7 @@ class CommandAnchorAdd:
         pass
 
     def Activated(self):
-        r""""""
+        r"""The Add Anchor Command was activated"""
         debug("CommandAnchorAdd, Activated")
 
         # selection = Gui.Selection.getSelection()
@@ -93,6 +93,19 @@ class CommandAnchorAdd:
         a = App.ActiveDocument.addObject("App::FeaturePython", "Anchor")
         Anchor(a, p, u, v)
         ViewProviderAnchor(a.ViewObject)
+
+        # -- Add the anchor to the App::PropertyLinkList
+        #    of the selected AnchorableObject --
+        try:
+            l = selected_object.Anchors
+            l.append(a)
+            selected_object.Anchors = l
+        except AttributeError:
+            msg = "Are you adding anchors to an AnchorableObject?"
+            error(msg)
+
+        # -- Show the anchors as children
+        # selected_object.ViewObject.claimChildren()
 
     def GetResources(self):
         icon = join(dirname(__file__),
