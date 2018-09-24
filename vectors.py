@@ -31,11 +31,13 @@ def perpendicular(a, normalize_=True, randomize_=False):
 
     # some components of a might be 0, deal with that
     divisor = np.nonzero(a)[0]
-    # print(divisor)
+
+    # There may be more than 1 nonzero value, but we only need 1
+    if len(divisor) > 1:
+        divisor = [divisor[-1]]
+
     not_divisor = np.delete([0, 1, 2], [divisor])
-    # print(not_divisor)
-    # print(not_divisor[0])
-    # print(not_divisor[1])
+
     if randomize_ is False:
         b[not_divisor[0]] = 1
         b[not_divisor[1]] = 1
@@ -44,9 +46,6 @@ def perpendicular(a, normalize_=True, randomize_=False):
         b[not_divisor[1]] = random.random()
 
     b[divisor[0]] = -(a[not_divisor[0]]*b[not_divisor[0]] + a[not_divisor[1]]*b[not_divisor[1]]) / a[divisor[0]]
-
-    # print("###")
-    # print(np.dot(a, b))
 
     assert np.dot(a, b) == 0.
 
