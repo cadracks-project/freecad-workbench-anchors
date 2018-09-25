@@ -11,6 +11,8 @@ from os.path import join, dirname
 
 import FreeCAD as App
 
+from freecad_logging import debug, error
+
 
 def make_anchorable_object_feature():
     r"""makes an anchorable object feature
@@ -53,15 +55,17 @@ class AnchorableObject:
 
     def onChanged(self, feature, prop):
         r"""Do something when a property has changed"""
-        App.Console.PrintMessage("Change property: " + str(prop) + "\n")
+        debug("Change property: " + str(prop) + "\n")
         if prop in ['Base']:
             self.execute(feature)
             feature.Base.ViewObject.hide()
 
     def execute(self, feature):
         r"""Do something when doing a recomputation, this method is mandatory"""
-        App.Console.PrintMessage("Recompute AnchorableObject feature\n")
         feature.Shape = feature.Base.Shape
+
+        for anchor in feature.Anchors:
+            anchor.Proxy.execute(anchor)
         # feature.Label = "Anchorable" + feature.Base.Label
 
 

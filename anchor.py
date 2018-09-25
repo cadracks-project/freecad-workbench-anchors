@@ -13,13 +13,14 @@ from os.path import join, dirname
 
 import numpy as np
 
-from freecad_logging import info, debug, error
+from freecad_logging import debug
 import FreeCAD as App
 
 from pivy import coin
 
 from transformations import superimposition_matrix, translation_from_matrix, \
     rotation_from_matrix
+from puv import puv
 
 
 # def make_anchor_feature(p, u, v):
@@ -42,12 +43,16 @@ def anchor_transformation(p0, u0, v0, p1, u1, v1):
 
     Parameters
     ----------
-    anchor_0 : Anchor
-    anchor_1 : Anchor
+    p0 : tuple
+    u0 : tuple
+    v0 : tuple
+    p1 : tuple
+    u1 : tuple
+    v1 : tuple
 
     Returns
     -------
-    4x4 matrix
+    4x4 matrix (numpy array)
 
     """
     p0x, p0y, p0z = p0
@@ -74,7 +79,26 @@ def anchor_transformation(p0, u0, v0, p1, u1, v1):
 
 
 class Anchor:
-    def __init__(self, obj, p, u, v):
+    def __init__(self, obj, p, u, v, topo_element):
+        obj.addProperty("App::PropertyLink",
+                        "parent",
+                        "Definition",
+                        "Anchor's parent").parent = topo_element[0]
+
+        obj.addProperty("App::PropertyString",
+                        "name_sub_element",
+                        "Definition",
+                        "Anchor's sub element name").name_sub_element = \
+            topo_element[1]
+
+        # https://forum.freecadweb.org/viewtopic.php?t=8224
+        # -> The property editor doesn't support App::PropertyLinkSub
+        #    at the moment. This will come sometime in the future...
+        obj.addProperty("App::PropertyLinkSub",
+                        "topo_element",
+                        "Definition",
+                        "Anchor's topo element").topo_element = topo_element
+
         obj.addProperty("App::PropertyVector",
                         "p",
                         "Definition",
@@ -91,11 +115,16 @@ class Anchor:
 
     def onChanged(self, fp, prop):
         r"""Do something when a property has changed"""
-        App.Console.PrintMessage("Change property: " + str(prop) + "\n")
+        debug("Change property of Anchor: " + str(prop) + "\n")
 
     def execute(self, fp):
         r"""Do something when doing a recomputation, this method is mandatory"""
-        App.Console.PrintMessage("Recompute Anchor feature\n")
+        debug("Recompute Anchor feature\n")
+
+        p, u, v = puv(fp.parent.Shape.getElement(fp.name_sub_element))
+        fp.p = App.Vector(p[0], p[1], p[2])
+        fp.u = App.Vector(u[0], u[1], u[2])
+        fp.v = App.Vector(v[0], v[1], v[2])
 
 
 class ViewProviderAnchor:
@@ -274,9 +303,9 @@ class ViewProviderAnchor:
         self.transform.translation.setValue((t[0], t[1], t[2]))
 
         angle, direction, point = rotation_from_matrix(at)
-        print("angle : %f" % angle)
-        print("direction : %s" % str(direction))
-        print("point : %s" % str(point))
+        # print("angle : %f" % angle)
+        # print("direction : %s" % str(direction))
+        # print("point : %s" % str(point))
 
         self.transform.rotation.setValue(coin.SbVec3f(direction), angle)
 
@@ -315,10 +344,11 @@ class ViewProviderAnchor:
 
     def onChanged(self, vp, prop):
         r"""Here we can do something when a single property got changed"""
-        App.Console.PrintMessage("Change property: " + str(prop) + "\n")
+        debug("Change property of ViewProvideAnchor: " + str(prop) + "\n")
         if prop == "ColorU":
             cu = vp.getPropertyByName("ColorU")
             self.color_u.rgb.setValue(cu[0], cu[1], cu[2])
+
         if prop == "ColorV":
             cv = vp.getPropertyByName("ColorV")
             self.color_v.rgb.setValue(cv[0], cv[1], cv[2])

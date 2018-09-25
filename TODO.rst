@@ -15,11 +15,11 @@ Next
 
 ******** Anchors as children of an anchorable part
 
-BUG : adding an anchor on a curved face fails in vectors.py", line 41, in perpendicular
+******** BUG : adding an anchor on a curved face fails in vectors.py", line 41, in perpendicular
 
-THE ANCHORS SHOULD MOVE WITH THE PARTS
+******** THE ANCHORS SHOULD MOVE WITH THE PARTS
 
-Other features : edges, vertices
+** Other features : edges, vertices
 
 Export to osvcad format
 

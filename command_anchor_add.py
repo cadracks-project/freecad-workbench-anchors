@@ -5,11 +5,10 @@ r"""Anchor Add Command"""
 from os.path import join, dirname
 
 import FreeCAD as App
-import Part
 
 from freecad_logging import debug, error
 from anchor import Anchor, ViewProviderAnchor
-from vectors import perpendicular
+from puv import puv
 
 if App.GuiUp:
     import FreeCADGui as Gui
@@ -29,8 +28,6 @@ class CommandAnchorAdd:
 
     def Activated(self):
         r"""The Add Anchor Command was activated"""
-        debug("CommandAnchorAdd, Activated")
-
         # selection = Gui.Selection.getSelection()
         selection_ex = Gui.Selection.getSelectionEx()
 
@@ -50,64 +47,41 @@ class CommandAnchorAdd:
 
             subselected_objects = unique_selection.SubObjects
 
-            for subselected_object in subselected_objects:
+            for i, subselected_object in enumerate(subselected_objects):
                 debug("SubSelection : %s || %s" % (subselected_object,
                                                    type(subselected_object)))
-                # if isinstance(subselected_object, Part.Solid):
-                #     debug("It is a Solid")
-                # elif isinstance(subselected_object, Part.Shell):
-                #     debug("It is a Shell")
-                if isinstance(subselected_object, Part.Face):
-                    debug("It is a Face")
-                    face = subselected_object
-                    u00, u10, v00, v10 = face.ParameterRange
-                    u05 = (u00 + u10) / 2
-                    v05 = (v00 + v10) / 2
-                    p = face.valueAt(u05, v05)
-                    u = face.normalAt(u05, v05)
 
-                    v = perpendicular(u, normalize_=True, randomize_=False)
+                p, u, v = puv(subselected_object)
 
-                elif isinstance(subselected_object, Part.Wire):
-                    debug("It is a Wire")
-                elif isinstance(subselected_object, Part.Edge):
-                    debug("It is an Edge")
-                    debug('TYPE : %s' % type(subselected_object.Curve))
+                # make_anchor_feature(p, u, v)
 
-                    if str(type(subselected_object.Curve)) == "<type 'Part.Circle'>":
-                        debug("it is a circle")
-                    elif str(type(
-                            subselected_object.Curve)) == "<type 'Part.Line'>":
-                        debug("it is a line")
-                    else:
-                        # known other possibilities
-                        # -  <type 'Part.BSplineCurve'>
-                        debug("it is NOT a circle and NOR a line")
-                elif isinstance(subselected_object, Part.Vertex):
-                    debug("It is a Vertex")
-                else:
-                    debug("What is that?")
+                print("SubElementName : %s" %
+                      unique_selection.SubElementNames[0])
 
-        # make_anchor_feature(p, u, v)
+                a = App.ActiveDocument.addObject("App::FeaturePython", "Anchor")
+                Anchor(a,
+                       p,
+                       u,
+                       v,
+                       topo_element=(unique_selection.Object,
+                                     unique_selection.SubElementNames[i]))
+                ViewProviderAnchor(a.ViewObject)
 
-        a = App.ActiveDocument.addObject("App::FeaturePython", "Anchor")
-        Anchor(a, p, u, v)
-        ViewProviderAnchor(a.ViewObject)
+                # -- Add the anchor to the App::PropertyLinkList
+                #    of the selected AnchorableObject --
+                try:
+                    l = selected_object.Anchors
+                    l.append(a)
+                    selected_object.Anchors = l
+                except AttributeError:
+                    msg = "Are you adding anchors to an AnchorableObject?"
+                    error(msg)
 
-        # -- Add the anchor to the App::PropertyLinkList
-        #    of the selected AnchorableObject --
-        try:
-            l = selected_object.Anchors
-            l.append(a)
-            selected_object.Anchors = l
-        except AttributeError:
-            msg = "Are you adding anchors to an AnchorableObject?"
-            error(msg)
-
-        # -- Show the anchors as children
-        # selected_object.ViewObject.claimChildren()
+                # -- Show the anchors as children
+                # selected_object.ViewObject.claimChildren()
 
     def GetResources(self):
+        r"""Resources for command integration in the UI"""
         icon = join(dirname(__file__),
                     "resources",
                     "freecad_workbench_anchors_add_anchor.svg")
