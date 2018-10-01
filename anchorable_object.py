@@ -14,6 +14,15 @@ import FreeCAD as App
 from freecad_logging import debug, error
 
 
+def is_anchorable_object(object_):
+    if "nchor" in object_.Name \
+            or "nchor" in object_.Label \
+            or hasattr(object_, "Anchors"):
+        return True
+    else:
+        return False
+
+
 def make_anchorable_object_feature():
     r"""makes an anchorable object feature
 

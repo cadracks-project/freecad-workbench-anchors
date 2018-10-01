@@ -2,18 +2,44 @@
 
 r"""Anchorable object save"""
 
-from os.path import join, dirname
+from os import remove
+from os.path import join, dirname, splitext, basename
+
+import zipfile
 
 import FreeCAD as App
 from PySide import QtGui
 
-from freecad_logging import debug, error
+from anchorable_object import is_anchorable_object
+from freecad_logging import debug, error, info
 
 if App.GuiUp:
     import FreeCADGui as Gui
 else:
     msg_no_ui = "Saving an anchorable object requires the FreeCAD Gui to be up"
     error(msg_no_ui)
+
+
+def create_stepzip(step_file, anchors_file):
+    r"""Procedure to create a zip file from a STEP file and an anchors file
+
+    Parameters
+    ----------
+    step_file : str
+        Path to the STEP file
+    anchors_file : str
+        Path to the anchors file
+
+    """
+    zf = zipfile.ZipFile("%s/%s.stepzip" % (dirname(step_file),
+                                            basename(splitext(step_file)[0])),
+                         "w",
+                         zipfile.ZIP_DEFLATED)
+    zf.write(step_file, basename(step_file))
+    zf.write(anchors_file, basename(anchors_file))
+    zf.close()
+    remove(step_file)
+    remove(anchors_file)
 
 
 class CommandAnchorableObjectSave:
@@ -45,14 +71,34 @@ class CommandAnchorableObjectSave:
             debug("  Selection : %s || %s" % (selected_object,
                                               selected_object.Shape.ShapeType))
 
-            dialog = QtGui.QFileDialog.getSaveFileName(
-                filter="Stepzip files (*.stepzip)")
-            # todo : save logic
             #  check is anchorable object
-            #  save shape as step
-            #  save anchors file (+ feature attachment)
-            #  zip it to a stepzip
-            debug("Will save to %s" % str(dialog))
+            if is_anchorable_object(selected_object):
+                dialog = QtGui.QFileDialog.getSaveFileName(
+                    filter="Stepzip files (*.stepzip)")
+                #  save shape as step
+                stepzip_path = dialog[0]
+                stepfile = splitext(stepzip_path)[0] + ".stp"
+                anchorsfile = splitext(stepzip_path)[0] + ".anchors"
+                selected_object.Shape.exportStep(stepfile)
+                #  save anchors file (+ feature attachment)
+
+                # TODO : save more info about anchor (sub element link)
+
+                anchors_descs = []
+                for anchor in selected_object.Anchors:
+                    anchors_descs.append("%s %f,%f,%f,%f,%f,%f,%f,%f,%f" %
+                                        (anchor.Label,
+                                         anchor.p[0], anchor.p[1], anchor.p[2],
+                                         anchor.u[0], anchor.u[1], anchor.u[2],
+                                         anchor.v[0], anchor.v[1], anchor.v[2]))
+                with open(anchorsfile, 'w') as f:
+                    f.write("\n".join(anchors_descs))
+
+                #  zip it to a stepzip
+                create_stepzip(stepfile, anchorsfile)
+                info("Anchorable object saved to %s" % dialog[0])
+            else:
+                error("The object to save should be an anchorable object")
 
     def GetResources(self):
         r"""Resources for command integration in the UI"""

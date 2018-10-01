@@ -22,7 +22,10 @@ Next
 ** Other features : edges, vertices
   Some would need a UI dialog
 
-Export to osvcad format
+******** Export to osvcad format
+Add the subelement link to the export
+
+Import from osvcad/stepzip format
 
 
 Later
