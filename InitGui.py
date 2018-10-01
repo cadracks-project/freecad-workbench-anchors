@@ -20,16 +20,22 @@ class AnchorWorkbench(Gui.Workbench):
         """
         Msg("Anchor workbench initialize\n")
 
+        from command_anchorable_object_open import CommandAnchorableObjectOpen
         from command_anchorable_object_add import CommandAnchorableObjectAdd
         from command_anchor_add import CommandAnchorAdd
+        from command_anchorable_object_save import CommandAnchorableObjectSave
         from command_assembly_add import CommandAssemblyAdd
 
-        command_names = ["AnchorableObjectAdd",
+        command_names = ["AnchorableObjectOpen",
+                         "AnchorableObjectAdd",
                          "AnchorAdd",
+                         "AnchorableObjectSave",
                          "AssemblyAdd"]
 
-        commands = [CommandAnchorableObjectAdd(),
+        commands = [CommandAnchorableObjectOpen(),
+                    CommandAnchorableObjectAdd(),
                     CommandAnchorAdd(),
+                    CommandAnchorableObjectSave(),
                     CommandAssemblyAdd()]
 
         for name, command in zip(command_names, commands):

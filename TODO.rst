@@ -20,6 +20,7 @@ Next
 ******** THE ANCHORS SHOULD MOVE WITH THE PARTS
 
 ** Other features : edges, vertices
+  Some would need a UI dialog
 
 Export to osvcad format
 
